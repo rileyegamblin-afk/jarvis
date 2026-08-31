@@ -1,0 +1,24 @@
+{
+  "name": "JARVIS \u2014 Personal AI System",
+  "short_name": "JARVIS",
+  "description": "A futuristic personal AI assistant for ChromeOS.",
+  "id": "./",
+  "start_url": "./standalone.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "theme_color": "#031016",
+  "background_color": "#020507",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

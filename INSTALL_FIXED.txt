@@ -1,0 +1,14 @@
+JARVIS 1.0.1 FIXED
+
+This build fixes the keyboard shortcut error where background.js tried to
+call sidePanel.open() from a command.
+
+Install:
+1. Go to chrome://extensions
+2. Remove the old JARVIS extension.
+3. Load unpacked and select this extracted folder.
+4. Go to chrome://extensions/shortcuts.
+5. Set Open JARVIS to Ctrl+Shift+J.
+6. Press Ctrl+Shift+J.
+
+The shortcut opens standalone.html in a maximized popup-style Chrome window.

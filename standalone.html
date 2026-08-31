@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JARVIS</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#031016"><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="brand">JARVIS</div>
+      <div class="sub">PERSONAL AI SYSTEM</div>
+    </div>
+    <button id="settingsBtn" class="iconBtn" title="Settings">⚙</button>
+  </header>
+  <section class="reactorWrap">
+    <div id="reactor" class="reactor">
+      <div class="ring r1"></div><div class="ring r2"></div><div class="core"></div>
+    </div>
+    <div id="state" class="state">READY</div>
+    <div id="status" class="status">Say “Jarvis” or type a message.</div>
+  </section>
+  <section id="chat" class="chat"></section>
+  <section class="controls">
+    <button id="micBtn" class="micBtn">🎙 Start listening</button>
+    <button id="stopBtn" class="secondary">Stop voice</button>
+    <textarea id="input" rows="2" placeholder="Type to JARVIS..."></textarea>
+    <div class="row"><button id="sendBtn" class="send">SEND</button><button id="clearBtn" class="secondary">Clear chat</button></div>
+  </section>
+  <section class="quick">
+    <button data-cmd="time">Time</button><button data-cmd="search">Search web</button>
+    <button data-cmd="youtube">YouTube</button><button data-cmd="weather">Weather</button>
+    <button data-cmd="reminder">Reminder</button><button data-cmd="page">Page summary</button>
+  </section>
+  <footer><span id="aiStatus">AI: READY</span><span id="keyStatus">KEY: NOT SET</span></footer>
+</div>
+<script src="sidepanel.js"></script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script></body>
+</html>

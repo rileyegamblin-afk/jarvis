@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "JARVIS - Personal AI Assistant",
+  "version": "1.0.1",
+  "description": "JARVIS standalone ChromeOS window with keyboard launch.",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "tabs",
+    "scripting",
+    "contextMenus",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open JARVIS"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "commands": {
+    "open-jarvis": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+J",
+        "chromeos": "Ctrl+Shift+J"
+      },
+      "description": "Open JARVIS"
+    }
+  },
+  "options_page": "settings.html"
+}

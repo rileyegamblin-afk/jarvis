@@ -1,0 +1,36 @@
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 50% 20%,#10303a 0,#061016 42%,#020507 100%);color:#e9fbff;font:14px Arial,sans-serif;min-width:330px}
+button,textarea{font:inherit}
+.app{min-height:100vh;padding:14px;display:flex;flex-direction:column;gap:12px}
+header{display:flex;justify-content:space-between;align-items:center;padding:5px 2px 12px;border-bottom:1px solid #1b5662}
+.brand{font-size:24px;letter-spacing:8px;font-weight:700}.sub{font-size:9px;letter-spacing:3px;opacity:.55;margin-top:4px}
+button{border:1px solid #1e7180;background:#08232c;color:#dffaff;border-radius:9px;padding:9px 11px;cursor:pointer}
+button:hover{background:#0d3440}.iconBtn{font-size:18px;padding:7px 10px}
+.reactorWrap{text-align:center;padding:8px 0 2px}
+.reactor{width:128px;height:128px;margin:0 auto 10px;position:relative;border-radius:50%;display:grid;place-items:center}
+.core{width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,#e8ffff,#38dfff 25%,#075d6d 55%,transparent 72%);box-shadow:0 0 25px #00dfff,0 0 60px #00788c;animation:pulse 1.8s infinite}
+.ring{position:absolute;border:1px solid #2ccfe6;border-radius:50%;inset:0;opacity:.65}.r1{animation:spin 5s linear infinite}.r2{inset:15px;border-style:dashed;animation:spin 4s linear infinite reverse}
+.reactor.listening .core{animation:pulseFast .45s infinite}.reactor.thinking .core{animation:pulse .7s infinite}.reactor.speaking .core{animation:pulseFast .28s infinite}
+@keyframes pulse{50%{transform:scale(1.16)}}@keyframes pulseFast{50%{transform:scale(1.32)}}@keyframes spin{to{transform:rotate(360deg)}}
+.state{letter-spacing:4px;font-weight:700;font-size:12px}.status{opacity:.55;font-size:11px;margin-top:4px}
+.chat{min-height:170px;max-height:330px;overflow:auto;border:1px solid #12424e;border-radius:12px;padding:10px;background:#031016aa}
+.msg{margin:0 0 12px;line-height:1.45;white-space:pre-wrap}.who{font-size:9px;letter-spacing:2px;opacity:.55;margin-bottom:3px}.user .who{color:#74e9ff}.ai .who{color:#b4ffd2}
+.controls{display:flex;flex-direction:column;gap:7px}.micBtn{font-weight:700;padding:11px}.micBtn.active{background:#123f4a}
+textarea{resize:none;width:100%;border:1px solid #1a5b68;background:#041116;color:#fff;border-radius:9px;padding:10px;outline:none}
+.row{display:flex;gap:7px}.row button{flex:1}.send{background:#0b4a58}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.quick button{font-size:11px;padding:8px}
+footer{display:flex;justify-content:space-between;font-size:9px;letter-spacing:1px;opacity:.5;padding-top:4px}
+::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#16414b;border-radius:10px}
+/* PWA app-window polish */
+body{user-select:none}
+textarea{user-select:text}
+.app{min-height:100vh;max-width:1100px;margin:0 auto;padding:22px 26px}
+@media(min-width:900px){
+ .app{display:grid;grid-template-columns:1fr 1.3fr;grid-template-rows:auto auto 1fr auto auto;gap:16px}
+ header{grid-column:1/-1}
+ .reactorWrap{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;justify-content:center}
+ .chat{grid-column:2;grid-row:2/4;min-height:430px;max-height:none}
+ .controls{grid-column:1/-1}
+ .quick{grid-column:1/-1}
+ footer{grid-column:1/-1}
+}

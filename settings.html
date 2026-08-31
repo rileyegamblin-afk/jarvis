@@ -1,21 +1,83 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>JARVIS Settings</title><link rel="stylesheet" href="settings.css"></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>JARVIS Settings</title>
+
+  <link rel="stylesheet" href="settings.css">
+</head>
+
 <body>
-<div class="box">
-<h1>JARVIS SETTINGS</h1>
-<p class="muted">Your API key is stored locally in Chrome storage on this Chromebook.</p>
-<label>Gemini API key</label>
-<input id="key" type="password" placeholder="Paste your Gemini API key">
-<div class="row"><button id="save">Save</button><button id="test">Test AI</button><button id="clear">Remove key</button></div>
-<hr>
-<label>Voice speed</label>
-<input id="rate" type="range" min=".7" max="1.4" step=".05" value="1.05">
-<span id="rateVal">1.05</span>
-<label class="check"><input id="speak" type="checkbox" checked> Speak answers aloud</label>
-<p id="result"></p>
-<h2>Keyboard shortcut</h2>
-<p>Use <b>Ctrl + Shift + J</b> to open JARVIS. If Chrome reports a conflict, open <code>chrome://extensions/shortcuts</code> and choose a different shortcut.</p>
-<p class="muted">JARVIS uses Gemini 3.6 Flash for fast general responses. Web searches open Google/YouTube directly. Chrome controls which pages extensions can access.</p>
-</div>
-<script src="settings.js"></script>
-</body></html>
+
+  <div class="box">
+
+    <h1>JARVIS SETTINGS</h1>
+
+    <p class="muted">
+      Your Gemini API key is stored locally in this browser on this device.
+    </p>
+
+    <label for="key">Gemini API key</label>
+
+    <input
+      id="key"
+      type="password"
+      placeholder="Paste your Gemini API key"
+      autocomplete="off"
+    >
+
+    <div class="row">
+      <button id="save" type="button">Save</button>
+      <button id="test" type="button">Test AI</button>
+      <button id="clear" type="button">Remove key</button>
+    </div>
+
+    <hr>
+
+    <label for="rate">Voice speed</label>
+
+    <input
+      id="rate"
+      type="range"
+      min="0.7"
+      max="1.4"
+      step="0.05"
+      value="1.05"
+    >
+
+    <span id="rateVal">1.05</span>
+
+    <label class="check">
+      <input
+        id="speak"
+        type="checkbox"
+        checked
+      >
+      Speak answers aloud
+    </label>
+
+    <p id="result"></p>
+
+    <h2>JARVIS Keyboard Shortcut</h2>
+
+    <p>
+      Use <b>Ctrl + Shift + J</b> to open JARVIS when the shortcut is
+      configured by your browser or operating system.
+    </p>
+
+    <p class="muted">
+      JARVIS uses your Gemini API key to communicate with Google's Gemini
+      API. Your key is stored in this browser's local storage and is not
+      written into the GitHub source files.
+    </p>
+
+  </div>
+
+  <!-- Cache-busting version number -->
+  <script src="settings.js?v=2"></script>
+
+</body>
+</html>

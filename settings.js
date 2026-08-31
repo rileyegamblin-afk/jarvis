@@ -4,43 +4,27 @@ const rateVal = document.getElementById("rateVal");
 const speak = document.getElementById("speak");
 const result = document.getElementById("result");
 
-function show(message) {
-  if (result) {
-    result.textContent = message;
-  }
-}
-
-function hasExtensionStorage() {
-  return (
-    typeof chrome !== "undefined" &&
-    chrome.storage &&
-    chrome.storage.local
-  );
-}
-
 rate.oninput = () => {
   rateVal.textContent = rate.value;
 };
 
-async function load() {
+
+// ================================
+// LOAD SETTINGS
+// ================================
+
+function load() {
   try {
-    if (!hasExtensionStorage()) {
-      show(
-        "JARVIS settings must be opened from the Chrome extension. Do not open settings.html directly."
-      );
-      return;
+    const savedKey = localStorage.getItem("jarvis_api_key");
+    const savedSettings = localStorage.getItem("jarvis_settings");
+
+    if (savedKey) {
+      key.value = savedKey;
     }
 
-    const data = await chrome.storage.local.get([
-      "apiKey",
-      "settings"
-    ]);
-
-    if (data.apiKey) {
-      key.value = data.apiKey;
-    }
-
-    const settings = data.settings || {};
+    const settings = savedSettings
+      ? JSON.parse(savedSettings)
+      : {};
 
     rate.value =
       settings.voiceRate !== undefined
@@ -51,21 +35,21 @@ async function load() {
 
     speak.checked =
       settings.speak !== false;
+
   } catch (error) {
     console.error("JARVIS settings load error:", error);
-    show("Error loading settings: " + error.message);
+    result.textContent =
+      "Error loading settings: " + error.message;
   }
 }
 
-document.getElementById("save").onclick = async () => {
-  try {
-    if (!hasExtensionStorage()) {
-      show(
-        "Storage unavailable. Open JARVIS through chrome://extensions."
-      );
-      return;
-    }
 
+// ================================
+// SAVE
+// ================================
+
+document.getElementById("save").onclick = () => {
+  try {
     const apiKey = key.value.trim();
 
     const settings = {
@@ -74,57 +58,75 @@ document.getElementById("save").onclick = async () => {
       model: "gemini-3.6-flash"
     };
 
-    await chrome.storage.local.set({
-      apiKey: apiKey,
-      settings: settings
-    });
+    localStorage.setItem(
+      "jarvis_api_key",
+      apiKey
+    );
 
-    show("Saved successfully.");
+    localStorage.setItem(
+      "jarvis_settings",
+      JSON.stringify(settings)
+    );
+
+    result.textContent = "Saved successfully.";
+
   } catch (error) {
     console.error("JARVIS save error:", error);
-    show("Error saving settings: " + error.message);
+    result.textContent =
+      "Error saving settings: " + error.message;
   }
 };
 
-document.getElementById("clear").onclick = async () => {
-  try {
-    if (!hasExtensionStorage()) {
-      show(
-        "Storage unavailable. Open JARVIS through chrome://extensions."
-      );
-      return;
-    }
 
-    await chrome.storage.local.remove("apiKey");
+// ================================
+// REMOVE API KEY
+// ================================
+
+document.getElementById("clear").onclick = () => {
+  try {
+    localStorage.removeItem("jarvis_api_key");
 
     key.value = "";
 
-    show("API key removed.");
+    result.textContent =
+      "API key removed.";
+
   } catch (error) {
     console.error("JARVIS remove error:", error);
-    show("Error removing API key: " + error.message);
+    result.textContent =
+      "Error removing API key: " + error.message;
   }
 };
 
+
+// ================================
+// TEST AI
+// ================================
+
 document.getElementById("test").onclick = async () => {
+
   const apiKey = key.value.trim();
 
   if (!apiKey) {
-    show("Add an API key first.");
+    result.textContent =
+      "Add an API key first.";
     return;
   }
 
-  show("Testing...");
+  result.textContent = "Testing...";
 
   try {
+
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
       {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey
         },
+
         body: JSON.stringify({
           contents: [
             {
@@ -136,6 +138,7 @@ document.getElementById("test").onclick = async () => {
               ]
             }
           ],
+
           generationConfig: {
             maxOutputTokens: 20
           }
@@ -156,11 +159,24 @@ document.getElementById("test").onclick = async () => {
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Connected";
 
-    show("Success: " + text);
+    result.textContent =
+      "Success: " + text;
+
   } catch (error) {
-    console.error("JARVIS AI test error:", error);
-    show("Error: " + error.message);
+
+    console.error(
+      "JARVIS AI test error:",
+      error
+    );
+
+    result.textContent =
+      "Error: " + error.message;
   }
 };
+
+
+// ================================
+// START
+// ================================
 
 load();

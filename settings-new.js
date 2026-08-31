@@ -9,79 +9,185 @@ const test = document.getElementById("test");
 
 const MODEL = "gemini-3.7-flash";
 
-if (rate && rateVal) {
+
+// VOICE SPEED
+if (rate) {
     rate.addEventListener("input", () => {
         rateVal.textContent = rate.value;
     });
 }
 
+
+// LOAD SETTINGS
 function loadSettings() {
+    const apiKey = localStorage.getItem("jarvis_api_key") || "";
+
+    let settings = {};
+
     try {
-        const savedKey =
-            localStorage.getItem("jarvis_api_key") || "";
-
-        let settings = {};
-
-        try {
-            settings = JSON.parse(
-                localStorage.getItem("jarvis_settings") || "{}"
-            );
-        } catch {
-            settings = {};
-        }
-
-        if (key) key.value = savedKey;
-
-        if (rate) {
-            rate.value =
-                settings.voiceRate !== undefined
-                    ? settings.voiceRate
-                    : 1.05;
-        }
-
-        if (rateVal && rate) {
-            rateVal.textContent = rate.value;
-        }
-
-        if (speak) {
-            speak.checked = settings.speak !== false;
-        }
-
-        if (result) {
-            result.textContent =
-                savedKey
-                    ? "✓ API key loaded."
-                    : "No API key saved yet.";
-        }
-
-    } catch (error) {
-        console.error(error);
-
-        if (result) {
-            result.textContent =
-                "Error loading settings: " + error.message;
-        }
+        settings = JSON.parse(
+            localStorage.getItem("jarvis_settings") || "{}"
+        );
+    } catch {
+        settings = {};
     }
+
+    key.value = apiKey;
+
+    rate.value =
+        settings.voiceRate !== undefined
+            ? settings.voiceRate
+            : 1.05;
+
+    rateVal.textContent = rate.value;
+
+    speak.checked = settings.speak !== false;
+
+    result.textContent = apiKey
+        ? "✓ API key loaded."
+        : "No API key saved yet.";
 }
 
 
-if (save) {
-    save.addEventListener("click", () => {
+// SAVE
+save.addEventListener("click", () => {
 
-        const apiKey = key.value.trim();
+    const apiKey = key.value.trim();
 
-        if (!apiKey) {
-            result.textContent =
-                "Please enter your Gemini API key.";
-            return;
+    if (!apiKey) {
+        result.textContent =
+            "Please enter your Gemini API key.";
+        return;
+    }
+
+    const settings = {
+        voiceRate: Number(rate.value),
+        speak: speak.checked,
+        model: MODEL
+    };
+
+    localStorage.setItem(
+        "jarvis_api_key",
+        apiKey
+    );
+
+    localStorage.setItem(
+        "jarvis_settings",
+        JSON.stringify(settings)
+    );
+
+    result.textContent =
+        "✓ API key saved successfully.";
+});
+
+
+// REMOVE KEY
+clear.addEventListener("click", () => {
+
+    localStorage.removeItem(
+        "jarvis_api_key"
+    );
+
+    key.value = "";
+
+    result.textContent =
+        "✓ API key removed.";
+});
+
+
+// TEST AI
+test.addEventListener("click", async () => {
+
+    const apiKey = key.value.trim();
+
+    if (!apiKey) {
+        result.textContent =
+            "Enter your API key first.";
+        return;
+    }
+
+    result.textContent =
+        "Testing Gemini...";
+
+    try {
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": apiKey
+                },
+
+                body: JSON.stringify({
+
+                    contents: [
+                        {
+                            role: "user",
+
+                            parts: [
+                                {
+                                    text: "Reply with exactly: JARVIS ONLINE"
+                                }
+                            ]
+                        }
+                    ],
+
+                    generationConfig: {
+                        maxOutputTokens: 100
+                    }
+                })
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        console.log(
+            "JARVIS GEMINI RESPONSE:",
+            data
+        );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.error?.message ||
+                `HTTP ${response.status}`
+            );
         }
 
-        const settings = {
-            voiceRate: Number(rate.value),
-            speak: speak.checked,
-            model: MODEL
-        };
 
+        const parts =
+            data?.candidates?.[0]?.content?.parts || [];
+
+
+        const text = parts
+            .filter(part =>
+                typeof part.text === "string"
+            )
+            .map(part => part.text)
+            .join("")
+            .trim();
+
+
+        if (!text) {
+
+            const reason =
+                data?.candidates?.[0]?.finishReason ||
+                data?.promptFeedback?.blockReason ||
+                "Unknown";
+
+            throw new Error(
+                `Gemini returned no text. Reason: ${reason}`
+            );
+        }
+
+
+        // SAVE WORKING KEY
         localStorage.setItem(
             "jarvis_api_key",
             apiKey
@@ -89,164 +195,31 @@ if (save) {
 
         localStorage.setItem(
             "jarvis_settings",
-            JSON.stringify(settings)
+            JSON.stringify({
+                voiceRate: Number(rate.value),
+                speak: speak.checked,
+                model: MODEL
+            })
+        );
+
+
+        result.textContent =
+            "✓ SUCCESS — " + text;
+
+
+    } catch (error) {
+
+        console.error(
+            "JARVIS AI TEST ERROR:",
+            error
         );
 
         result.textContent =
-            "✓ API key saved successfully.";
-    });
-}
+            "✕ ERROR — " +
+            error.message;
+    }
+});
 
 
-if (clear) {
-    clear.addEventListener("click", () => {
-
-        localStorage.removeItem(
-            "jarvis_api_key"
-        );
-
-        if (key) key.value = "";
-
-        result.textContent =
-            "✓ API key removed.";
-    });
-}
-
-
-if (test) {
-
-    test.addEventListener("click", async () => {
-
-        const apiKey = key.value.trim();
-
-        if (!apiKey) {
-            result.textContent =
-                "Enter your API key first.";
-            return;
-        }
-
-        result.textContent =
-            "Testing Gemini...";
-
-        try {
-
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        contents: [
-                            {
-                                parts: [
-                                    {
-                                        text: "Say JARVIS ONLINE"
-                                    }
-                                ]
-                            }
-                        ]
-                    })
-                }
-            );
-
-            const rawText =
-                await response.text();
-
-            console.log(
-                "GEMINI STATUS:",
-                response.status
-            );
-
-            console.log(
-                "GEMINI RESPONSE:",
-                rawText
-            );
-
-
-            let data;
-
-            try {
-                data = JSON.parse(rawText);
-            } catch {
-                throw new Error(
-                    "Gemini returned invalid JSON: " +
-                    rawText.substring(0, 300)
-                );
-            }
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data?.error?.message ||
-                    `HTTP ${response.status}`
-                );
-            }
-
-
-            const parts =
-    data?.candidates?.[0]?.content?.parts || [];
-
-const text = parts
-    .filter(part => part.text)
-    .map(part => part.text)
-    .join("")
-    .trim();
-
-
-            if (!text) {
-
-                console.log(
-                    "FULL GEMINI DATA:",
-                    data
-                );
-
-                throw new Error(
-                    "Gemini returned no text. Check the browser console for the full response."
-                );
-            }
-
-
-            localStorage.setItem(
-                "jarvis_api_key",
-                apiKey
-            );
-
-            localStorage.setItem(
-                "jarvis_settings",
-                JSON.stringify({
-                    voiceRate:
-                        Number(rate.value),
-
-                    speak:
-                        speak.checked,
-
-                    model:
-                        MODEL
-                })
-            );
-
-
-            result.textContent =
-                "✓ SUCCESS — " + text;
-
-        } catch (error) {
-
-            console.error(
-                "JARVIS GEMINI ERROR:",
-                error
-            );
-
-            result.textContent =
-                "✕ ERROR — " +
-                error.message;
-        }
-    });
-}
-
-
+// START
 loadSettings();

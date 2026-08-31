@@ -1,22 +1,18 @@
-const $ = id =>
-    document.getElementById(id);
+```javascript
+const $ = id => document.getElementById(id);
 
 
 // ======================================================
-// GEMINI MODELS
+// JARVIS CONFIGURATION
 // ======================================================
 
 const MODELS = [
-
     "gemini-3.7-flash",
-
     "gemini-3.6-flash",
-
-    "gemini-3.5-flash",
-
-    "gemini-2.5-flash"
-
+    "gemini-3.5-flash"
 ];
+
+const MAX_HISTORY = 12;
 
 
 // ======================================================
@@ -24,13 +20,9 @@ const MODELS = [
 // ======================================================
 
 let recognition = null;
-
 let listening = false;
-
 let wakeMode = true;
-
 let busy = false;
-
 let history = [];
 
 
@@ -38,57 +30,37 @@ let history = [];
 // UI
 // ======================================================
 
-function log(
-    who,
-    text
-) {
+function log(who, text) {
 
-    const div =
-        document.createElement(
-            "div"
-        );
-
+    const div = document.createElement("div");
 
     div.className =
-        `msg ${
-            who === "YOU"
-                ? "user"
-                : "ai"
-        }`;
-
+        `msg ${who === "YOU" ? "user" : "ai"}`;
 
     div.innerHTML =
-
-        `<div class="who">${who}</div>
-         <div></div>`;
-
+        `<div class="who">${who}</div><div></div>`;
 
     div.querySelector(
         "div:last-child"
-    ).textContent =
-        text;
+    ).textContent = text;
 
-
-    $("chat").appendChild(
-        div
-    );
-
+    $("chat").appendChild(div);
 
     $("chat").scrollTop =
         $("chat").scrollHeight;
 }
 
 
-function state(
-    text,
-    mode = ""
-) {
+function state(text, mode = "") {
 
-    $("state").textContent =
-        text;
+    if ($("state")) {
+        $("state").textContent = text;
+    }
 
-    $("reactor").className =
-        "reactor " + mode;
+    if ($("reactor")) {
+        $("reactor").className =
+            "reactor " + mode;
+    }
 }
 
 
@@ -98,24 +70,27 @@ function state(
 
 function getSettings() {
 
-    let settings = {};
-
     try {
 
-        settings =
-            JSON.parse(
-                localStorage.getItem(
-                    "jarvis_settings"
-                ) || "{}"
-            );
+        return JSON.parse(
+            localStorage.getItem(
+                "jarvis_settings"
+            ) || "{}"
+        );
 
     } catch {
 
-        settings = {};
+        return {};
 
     }
+}
 
-    return settings;
+
+function getApiKey() {
+
+    return localStorage.getItem(
+        "jarvis_api_key"
+    ) || "";
 }
 
 
@@ -128,32 +103,25 @@ function speak(text) {
     const settings =
         getSettings();
 
-
-    const s =
-        new SpeechSynthesisUtterance(
-            text
-        );
-
-
-    s.rate =
-        Number(
-            settings.voiceRate ||
-            1.05
-        );
-
-
-    s.pitch =
-        0.9;
-
-
-    if (
-        settings.speak !== false
-    ) {
-
-        speechSynthesis.speak(
-            s
-        );
+    if (settings.speak === false) {
+        return;
     }
+
+    speechSynthesis.cancel();
+
+    const utterance =
+        new SpeechSynthesisUtterance(text);
+
+    utterance.rate =
+        Number(
+            settings.voiceRate || 1.15
+        );
+
+    utterance.pitch = 0.9;
+
+    speechSynthesis.speak(
+        utterance
+    );
 }
 
 
@@ -161,17 +129,17 @@ function stopVoice() {
 
     speechSynthesis.cancel();
 
-    state(
-        "READY"
-    );
+    state("READY");
 
-    $("aiStatus").textContent =
-        "AI: READY";
+    if ($("aiStatus")) {
+        $("aiStatus").textContent =
+            "AI: READY";
+    }
 }
 
 
 // ======================================================
-// SPEECH RECOGNITION
+// VOICE RECOGNITION
 // ======================================================
 
 function initRecognition() {
@@ -180,226 +148,173 @@ function initRecognition() {
         window.SpeechRecognition ||
         window.webkitSpeechRecognition;
 
-
     if (!SR) {
 
         $("status").textContent =
-            "Speech recognition isn't available here. Use typing.";
+            "Voice recognition isn't available here. You can still type.";
 
         return;
     }
 
-
     recognition =
         new SR();
-
 
     recognition.lang =
         "en-GB";
 
-
     recognition.continuous =
         true;
 
-
     recognition.interimResults =
         true;
-
 
     recognition.maxAlternatives =
         1;
 
 
-    recognition.onstart =
-        () => {
+    recognition.onstart = () => {
 
-            listening = true;
+        listening = true;
+
+        $("micBtn").textContent =
+            "⏹ Stop listening";
+
+        $("micBtn")
+            .classList
+            .add("active");
+
+        $("status").textContent =
+            "Listening…";
+
+        state(
+            wakeMode
+                ? "LISTENING FOR JARVIS"
+                : "LISTENING",
+            "listening"
+        );
+    };
+
+
+    recognition.onend = () => {
+
+        if (listening) {
+
+            try {
+                recognition.start();
+            } catch {}
+
+        }
+    };
+
+
+    recognition.onerror = event => {
+
+        $("status").textContent =
+            "Microphone: " +
+            event.error;
+
+        if (
+            event.error ===
+            "not-allowed"
+        ) {
+
+            listening = false;
 
             $("micBtn").textContent =
-                "⏹ Stop listening";
-
-            $("micBtn")
-                .classList
-                .add("active");
+                "🎙 Start listening";
+        }
+    };
 
 
-            $("status").textContent =
-                "Listening…";
+    recognition.onresult = event => {
 
+        let finalText = "";
 
-            state(
-
-                wakeMode
-                    ? "LISTENING FOR JARVIS"
-                    : "LISTENING",
-
-                "listening"
-            );
-        };
-
-
-    recognition.onend =
-        () => {
-
-            if (listening) {
-
-                try {
-
-                    recognition.start();
-
-                } catch {}
-
-            }
-
-        };
-
-
-    recognition.onerror =
-        event => {
-
-            $("status").textContent =
-                "Microphone: " +
-                event.error;
-
+        for (
+            let i = event.resultIndex;
+            i < event.results.length;
+            i++
+        ) {
 
             if (
-                event.error ===
-                "not-allowed"
+                event.results[i].isFinal
             ) {
 
-                listening =
-                    false;
-
-                $("micBtn").textContent =
-                    "🎙 Start listening";
+                finalText +=
+                    event.results[i][0]
+                        .transcript;
             }
+        }
 
-        };
+        finalText =
+            finalText.trim();
+
+        if (!finalText) {
+            return;
+        }
 
 
-    recognition.onresult =
-        event => {
+        if (wakeMode) {
 
-            let finalText =
-                "";
-
-
-            for (
-                let i =
-                    event.resultIndex;
-
-                i <
-                    event.results.length;
-
-                i++
+            if (
+                /\bjarvis\b/i.test(
+                    finalText
+                )
             ) {
 
-                if (
-                    event.results[i]
-                        .isFinal
-                ) {
+                wakeMode = false;
 
-                    finalText +=
-                        event.results[i][0]
-                            .transcript;
+                state(
+                    "LISTENING FOR COMMAND",
+                    "listening"
+                );
 
-                }
+                $("status").textContent =
+                    "Go ahead.";
 
+                speak("Yes?");
             }
 
-
-            finalText =
-                finalText.trim();
-
-
-            if (!finalText)
-                return;
+            return;
+        }
 
 
-            if (wakeMode) {
+        wakeMode = true;
 
-                if (
-                    /\bjarvis\b/i
-                        .test(finalText)
-                ) {
+        log(
+            "YOU",
+            finalText
+        );
 
-                    wakeMode =
-                        false;
-
-
-                    state(
-                        "LISTENING FOR COMMAND",
-                        "listening"
-                    );
-
-
-                    $("status").textContent =
-                        "Go ahead.";
-
-
-                    speak(
-                        "Yes?"
-                    );
-
-                }
-
-                return;
-            }
-
-
-            wakeMode =
-                true;
-
-
-            log(
-                "YOU",
-                finalText
-            );
-
-
-            handle(
-                finalText
-            );
-
-        };
+        handle(
+            finalText
+        );
+    };
 }
 
 
-// ======================================================
-// MICROPHONE
-// ======================================================
-
 function toggleMic() {
 
-    if (!recognition)
+    if (!recognition) {
         initRecognition();
+    }
 
-
-    if (!recognition)
+    if (!recognition) {
         return;
-
+    }
 
     if (listening) {
 
-        listening =
-            false;
-
+        listening = false;
 
         try {
-
             recognition.stop();
-
         } catch {}
-
 
         $("micBtn").textContent =
             "🎙 Start listening";
 
-
-        state(
-            "READY"
-        );
-
+        state("READY");
 
         $("status").textContent =
             "Say “Jarvis” or type a message.";
@@ -407,82 +322,390 @@ function toggleMic() {
         return;
     }
 
+    try {
+        recognition.start();
+    } catch {}
+}
+
+
+// ======================================================
+// BASIC ACTIONS
+// ======================================================
+
+function google(query) {
+
+    window.open(
+        "https://www.google.com/search?q=" +
+        encodeURIComponent(query),
+        "_blank"
+    );
+}
+
+
+function youtube(query) {
+
+    window.open(
+        "https://www.youtube.com/results?search_query=" +
+        encodeURIComponent(query),
+        "_blank"
+    );
+}
+
+
+function openWebsite(url, spokenName) {
+
+    window.open(
+        url,
+        "_blank"
+    );
+
+    speak(
+        "Opening " +
+        spokenName +
+        "."
+    );
+}
+
+
+function tellTime() {
+
+    const time =
+        new Date().toLocaleTimeString(
+            "en-GB",
+            {
+                hour: "numeric",
+                minute: "2-digit"
+            }
+        );
+
+    log(
+        "JARVIS",
+        `The time is ${time}.`
+    );
+
+    speak(
+        `It is ${time}.`
+    );
+}
+
+
+// ======================================================
+// WEATHER
+// ======================================================
+
+async function getCoordinates(place) {
+
+    if (!place) {
+
+        return new Promise(
+            resolve => {
+
+                navigator.geolocation.getCurrentPosition(
+
+                    position => {
+
+                        resolve({
+                            latitude:
+                                position.coords.latitude,
+
+                            longitude:
+                                position.coords.longitude,
+
+                            name:
+                                "your current location"
+                        });
+
+                    },
+
+                    () => {
+
+                        resolve(null);
+
+                    },
+
+                    {
+                        enableHighAccuracy: false,
+                        timeout: 8000,
+                        maximumAge: 600000
+                    }
+                );
+
+            }
+        );
+    }
+
+
+    const response =
+        await fetch(
+            "https://geocoding-api.open-meteo.com/v1/search?name=" +
+            encodeURIComponent(place) +
+            "&count=1&language=en&format=json"
+        );
+
+    if (!response.ok) {
+        throw new Error(
+            "Could not find that location."
+        );
+    }
+
+    const data =
+        await response.json();
+
+    if (
+        !data.results ||
+        !data.results.length
+    ) {
+
+        throw new Error(
+            `I couldn't find ${place}.`
+        );
+    }
+
+    const location =
+        data.results[0];
+
+    return {
+
+        latitude:
+            location.latitude,
+
+        longitude:
+            location.longitude,
+
+        name:
+            [
+                location.name,
+                location.country
+            ]
+                .filter(Boolean)
+                .join(", ")
+    };
+}
+
+
+function weatherDescription(code) {
+
+    const descriptions = {
+
+        0: "Clear sky",
+
+        1: "Mainly clear",
+
+        2: "Partly cloudy",
+
+        3: "Overcast",
+
+        45: "Foggy",
+
+        48: "Foggy",
+
+        51: "Light drizzle",
+
+        53: "Drizzle",
+
+        55: "Heavy drizzle",
+
+        61: "Light rain",
+
+        63: "Rain",
+
+        65: "Heavy rain",
+
+        71: "Light snow",
+
+        73: "Snow",
+
+        75: "Heavy snow",
+
+        80: "Rain showers",
+
+        81: "Rain showers",
+
+        82: "Heavy rain showers",
+
+        95: "Thunderstorm",
+
+        96: "Thunderstorm with hail",
+
+        99: "Thunderstorm with hail"
+    };
+
+    return (
+        descriptions[code] ||
+        "Unknown conditions"
+    );
+}
+
+
+async function showWeather(place = "") {
+
+    state(
+        "CHECKING WEATHER",
+        "thinking"
+    );
+
+    $("status").textContent =
+        "Getting the latest weather…";
 
     try {
 
-        recognition.start();
+        const location =
+            await getCoordinates(
+                place
+            );
 
-    } catch {}
+        if (!location) {
 
+            const requested =
+                prompt(
+                    "What's the town or city you want the weather for?"
+                );
+
+            if (!requested) {
+
+                state("READY");
+
+                return;
+            }
+
+            return showWeather(
+                requested
+            );
+        }
+
+
+        const url =
+            "https://api.open-meteo.com/v1/forecast?" +
+            "latitude=" +
+            location.latitude +
+            "&longitude=" +
+            location.longitude +
+            "&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+            "&timezone=auto" +
+            "&forecast_days=4";
+
+
+        const response =
+            await fetch(url);
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Weather service unavailable."
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        const current =
+            data.current;
+
+
+        const daily =
+            data.daily;
+
+
+        const condition =
+            weatherDescription(
+                current.weather_code
+            );
+
+
+        let weatherText =
+
+`Weather for ${location.name}
+
+🌡️ Temperature: ${Math.round(current.temperature_2m)}°C
+🌡️ Feels like: ${Math.round(current.apparent_temperature)}°C
+☁️ Conditions: ${condition}
+💧 Humidity: ${current.relative_humidity_2m}%
+🌧️ Rain now: ${current.rain} mm
+💨 Wind: ${Math.round(current.wind_speed_10m)} km/h
+
+Forecast:
+
+`;
+
+
+        for (
+            let i = 0;
+            i < daily.time.length;
+            i++
+        ) {
+
+            const date =
+                new Date(
+                    daily.time[i]
+                );
+
+
+            const day =
+                i === 0
+                    ? "Today"
+                    : date.toLocaleDateString(
+                        "en-GB",
+                        {
+                            weekday:
+                                "long"
+                        }
+                    );
+
+
+            weatherText +=
+
+`${day}: ${Math.round(daily.temperature_2m_min[i])}–${Math.round(daily.temperature_2m_max[i])}°C, ${weatherDescription(daily.weather_code[i])}, ${daily.precipitation_probability_max[i]}% chance of rain
+`;
+        }
+
+
+        log(
+            "JARVIS",
+            weatherText
+        );
+
+
+        const spoken =
+            `In ${location.name}, it's ${Math.round(current.temperature_2m)} degrees and ${condition}. The wind is ${Math.round(current.wind_speed_10m)} kilometres per hour, with a ${daily.precipitation_probability_max[0]} percent chance of rain today.`;
+
+
+        speak(
+            spoken
+        );
+
+
+        state(
+            "WEATHER READY"
+        );
+
+        $("status").textContent =
+            "Weather updated.";
+
+    } catch (error) {
+
+        log(
+            "JARVIS ERROR",
+            error.message
+        );
+
+        speak(
+            "Sorry, I couldn't get the weather right now."
+        );
+
+        state(
+            "WEATHER ERROR"
+        );
+
+    }
 }
 
 
 // ======================================================
-// GOOGLE / YOUTUBE
-// ======================================================
-
-function google(q) {
-
-    window.open(
-
-        "https://www.google.com/search?q=" +
-        encodeURIComponent(q),
-
-        "_blank"
-
-    );
-
-}
-
-
-function youtube(q) {
-
-    window.open(
-
-        "https://www.youtube.com/results?search_query=" +
-        encodeURIComponent(q),
-
-        "_blank"
-
-    );
-
-}
-
-
-function weather() {
-
-    google(
-        "weather today"
-    );
-
-}
-
-
-function time() {
-
-    speak(
-
-        "It is " +
-
-        new Date()
-            .toLocaleTimeString(
-                "en-GB",
-                {
-                    hour:
-                        "numeric",
-
-                    minute:
-                        "2-digit"
-                }
-            )
-
-    );
-
-}
-
-
-// ======================================================
-// GEMINI REQUEST
+// GEMINI
 // ======================================================
 
 async function requestGemini(
@@ -498,8 +721,7 @@ async function requestGemini(
 
             {
 
-                method:
-                    "POST",
+                method: "POST",
 
                 headers: {
 
@@ -508,7 +730,6 @@ async function requestGemini(
 
                     "x-goog-api-key":
                         apiKey
-
                 },
 
                 body:
@@ -519,14 +740,19 @@ async function requestGemini(
                         generationConfig: {
 
                             maxOutputTokens:
-                                500
+                                300,
+
+                            thinkingConfig: {
+
+                                thinkingLevel:
+                                    "low"
+
+                            }
 
                         }
 
                     })
-
             }
-
         );
 
 
@@ -538,20 +764,14 @@ async function requestGemini(
 
         const error =
             new Error(
-
                 data?.error?.message ||
-
                 `HTTP ${response.status}`
-
             );
-
 
         error.status =
             response.status;
 
-
         throw error;
-
     }
 
 
@@ -582,51 +802,28 @@ async function requestGemini(
 
     if (!answer) {
 
-        const reason =
-            data?.candidates?.[0]
-                ?.finishReason ||
-
-            data?.promptFeedback
-                ?.blockReason ||
-
-            "Unknown";
-
-
         const error =
             new Error(
-
-                `Gemini returned no text. Reason: ${reason}`
-
+                "Gemini returned no text."
             );
-
 
         error.status =
             503;
 
-
         throw error;
-
     }
 
 
     return answer;
-
 }
 
 
-// ======================================================
-// TEMPORARY ERROR DETECTION
-// ======================================================
-
-function isTemporaryError(
-    error
-) {
+function isTemporaryError(error) {
 
     const status =
         Number(
             error?.status || 0
         );
-
 
     const message =
         String(
@@ -638,13 +835,9 @@ function isTemporaryError(
     return (
 
         status === 429 ||
-
         status === 500 ||
-
         status === 502 ||
-
         status === 503 ||
-
         status === 504 ||
 
         message.includes(
@@ -660,78 +853,66 @@ function isTemporaryError(
         ) ||
 
         message.includes(
-            "service unavailable"
-        ) ||
-
-        message.includes(
             "resource exhausted"
         )
-
     );
-
 }
 
-
-// ======================================================
-// AUTOMATIC MODEL FALLBACK
-// ======================================================
 
 async function askGemini(
     question
 ) {
 
     const apiKey =
-        localStorage.getItem(
-            "jarvis_api_key"
-        );
+        getApiKey();
 
 
     if (!apiKey) {
 
         throw new Error(
-            "No Gemini API key is saved. Open Settings and add your key."
+            "No API key is saved. Open Settings and add your Gemini key."
         );
-
     }
 
 
     const contents = [];
 
 
-    contents.push({
+    const systemPrompt =
 
-        role:
-            "user",
+`You are JARVIS, a fast personal AI assistant.
 
-        parts: [
+Be concise, natural and useful.
 
-            {
+Keep most answers under about 100 words unless the user asks for detail.
 
-                text:
+You are running inside a Chromebook web app.
 
-`You are JARVIS, a personal AI assistant running on a Chromebook.
+You can perform browser actions only when the application code explicitly provides them.
 
-Be helpful, natural and concise.
+Do not pretend you performed an action that you didn't perform.
 
-Speak like a capable personal assistant.
-
-Do not claim that you performed an action unless the browser actually performed it.
-
-The user wants spoken-friendly answers.
+The application handles weather, time, Google searches, YouTube searches and opening websites directly.
 
 User request:
-${question}`
+${question}`;
 
+
+    contents.push({
+
+        role: "user",
+
+        parts: [
+            {
+                text: systemPrompt
             }
-
         ]
-
     });
 
 
     const recent =
         history.slice(
-            -8
+            -MAX_HISTORY
         );
 
 
@@ -746,16 +927,12 @@ ${question}`
                 item.role,
 
             parts: [
-
                 {
                     text:
                         item.text
                 }
-
             ]
-
         });
-
     }
 
 
@@ -765,10 +942,7 @@ ${question}`
 
     for (
         let i = 0;
-
-        i <
-            MODELS.length;
-
+        i < MODELS.length;
         i++
     ) {
 
@@ -778,36 +952,28 @@ ${question}`
 
         try {
 
-            state(
-                i === 0
-                    ? "THINKING"
-                    : `SWITCHING TO ${model.toUpperCase()}`,
-                "thinking"
-            );
+            if (i > 0) {
 
-
-            $("status").textContent =
-                `Using ${model}…`;
-
-
-            const answer =
-                await requestGemini(
-
-                    model,
-
-                    apiKey,
-
-                    contents
-
+                state(
+                    "SWITCHING AI",
+                    "thinking"
                 );
+
+                $("status").textContent =
+                    `Switching to ${model}…`;
+            }
 
 
             return {
 
-                answer,
+                answer:
+                    await requestGemini(
+                        model,
+                        apiKey,
+                        contents
+                    ),
 
                 model
-
             };
 
 
@@ -818,8 +984,7 @@ ${question}`
 
 
             console.warn(
-                model +
-                " failed:",
+                model,
                 error
             );
 
@@ -831,181 +996,231 @@ ${question}`
             ) {
 
                 throw error;
-
             }
-
-
-            if (
-                i <
-                MODELS.length - 1
-            ) {
-
-                $("status").textContent =
-                    `${model} is busy. Trying another Gemini model…`;
-
-
-                await new Promise(
-                    resolve =>
-                        setTimeout(
-                            resolve,
-                            800
-                        )
-                );
-
-            }
-
         }
-
     }
 
 
-    throw lastError ||
+    throw (
+        lastError ||
         new Error(
             "All Gemini models are currently unavailable."
-        );
-
+        )
+    );
 }
 
 
 // ======================================================
-// HANDLE COMMANDS
+// COMMAND HANDLER
 // ======================================================
 
-async function handle(
-    text
-) {
+async function handle(text) {
 
-    const l =
-        text.toLowerCase();
+    const lower =
+        text.toLowerCase().trim();
 
 
+    // TIME
     if (
-        l.includes(
-            "what time"
-        )
+        lower.includes("what time") ||
+        lower === "time"
     ) {
 
-        time();
+        tellTime();
 
         return;
     }
 
 
+    // WEATHER
     if (
-        l.includes(
+        lower === "weather" ||
+        lower.includes("weather today") ||
+        lower.includes("what's the weather") ||
+        lower.includes("what is the weather") ||
+        lower.includes("how's the weather") ||
+        lower.includes("how is the weather")
+    ) {
+
+        let place = "";
+
+
+        const match =
+            text.match(
+                /(?:weather|forecast)\s+(?:in|for|at)\s+(.+)/i
+            );
+
+
+        if (match) {
+            place =
+                match[1].trim();
+        }
+
+
+        await showWeather(
+            place
+        );
+
+        return;
+    }
+
+
+    // OPEN YOUTUBE
+    if (
+        lower.includes(
             "open youtube"
         )
     ) {
 
-        window.open(
+        openWebsite(
             "https://www.youtube.com",
-            "_blank"
-        );
-
-        speak(
-            "Opening YouTube."
+            "YouTube"
         );
 
         return;
     }
 
 
+    // OPEN GOOGLE
     if (
-        l.includes(
+        lower.includes(
             "open google"
         )
     ) {
 
-        window.open(
+        openWebsite(
             "https://www.google.com",
-            "_blank"
-        );
-
-        speak(
-            "Opening Google."
+            "Google"
         );
 
         return;
     }
 
 
+    // OPEN GMAIL
     if (
-        l.includes(
+        lower.includes(
             "open gmail"
         )
     ) {
 
-        window.open(
+        openWebsite(
             "https://mail.google.com",
-            "_blank"
+            "Gmail"
+        );
+
+        return;
+    }
+
+
+    // SEARCH GOOGLE
+    const googleMatch =
+        text.match(
+            /^search google for\s+(.+)/i
+        );
+
+
+    if (googleMatch) {
+
+        google(
+            googleMatch[1]
         );
 
         speak(
-            "Opening Gmail."
+            "Searching Google."
         );
 
         return;
     }
 
 
-    if (
-        l.startsWith(
-            "search google for"
-        )
-    ) {
-
-        google(
-
-            text
-                .replace(
-                    /search google for/i,
-                    ""
-                )
-                .trim()
-
+    // SEARCH YOUTUBE
+    const youtubeMatch =
+        text.match(
+            /^search youtube for\s+(.+)/i
         );
 
-        return;
-    }
 
-
-    if (
-        l.startsWith(
-            "search youtube for"
-        )
-    ) {
+    if (youtubeMatch) {
 
         youtube(
+            youtubeMatch[1]
+        );
 
-            text
-                .replace(
-                    /search youtube for/i,
-                    ""
-                )
-                .trim()
-
+        speak(
+            "Searching YouTube."
         );
 
         return;
     }
 
 
-    if (
-        l.includes(
-            "weather"
-        )
+    // OPEN COMMON WEBSITES
+    const websites = {
+
+        "open netflix":
+            [
+                "https://www.netflix.com",
+                "Netflix"
+            ],
+
+        "open spotify":
+            [
+                "https://open.spotify.com",
+                "Spotify"
+            ],
+
+        "open amazon":
+            [
+                "https://www.amazon.co.uk",
+                "Amazon"
+            ],
+
+        "open github":
+            [
+                "https://github.com",
+                "GitHub"
+            ],
+
+        "open microsoft":
+            [
+                "https://www.microsoft.com",
+                "Microsoft"
+            ],
+
+        "open outlook":
+            [
+                "https://outlook.live.com",
+                "Outlook"
+            ]
+
+    };
+
+
+    for (
+        const command in websites
     ) {
 
-        weather();
+        if (
+            lower.includes(
+                command
+            )
+        ) {
 
-        return;
+            openWebsite(
+                websites[command][0],
+                websites[command][1]
+            );
+
+            return;
+        }
     }
 
 
+    // OTHERWISE ASK GEMINI
     await ask(
         text
     );
-
 }
 
 
@@ -1017,12 +1232,12 @@ async function ask(
     question
 ) {
 
-    if (busy)
+    if (busy) {
         return;
+    }
 
 
-    busy =
-        true;
+    busy = true;
 
 
     state(
@@ -1051,10 +1266,6 @@ async function ask(
             response.answer;
 
 
-        const model =
-            response.model;
-
-
         history.push(
 
             {
@@ -1072,31 +1283,26 @@ async function ask(
                 text:
                     answer
             }
-
         );
 
 
         if (
             history.length >
-            20
+            MAX_HISTORY * 2
         ) {
 
             history =
                 history.slice(
-                    -20
+                    -(MAX_HISTORY * 2)
                 );
-
         }
 
 
         localStorage.setItem(
-
             "jarvis_history",
-
             JSON.stringify(
                 history
             )
-
         );
 
 
@@ -1117,7 +1323,7 @@ async function ask(
 
 
         $("status").textContent =
-            `Response from ${model}.`;
+            `Response from ${response.model}.`;
 
 
         speak(
@@ -1154,11 +1360,8 @@ async function ask(
 
     } finally {
 
-        busy =
-            false;
-
+        busy = false;
     }
-
 }
 
 
@@ -1183,8 +1386,9 @@ $("sendBtn").onclick =
                 .trim();
 
 
-        if (!text)
+        if (!text) {
             return;
+        }
 
 
         $("input").value =
@@ -1200,7 +1404,6 @@ $("sendBtn").onclick =
         handle(
             text
         );
-
     };
 
 
@@ -1209,21 +1412,19 @@ $("input").addEventListener(
     event => {
 
         if (
-            event.key ===
-            "Enter" &&
+            event.key === "Enter" &&
             !event.shiftKey
         ) {
 
             event.preventDefault();
 
             $("sendBtn").click();
-
         }
-
     }
 );
 
 
+// CLEAR CHAT
 $("clearBtn").onclick =
     () => {
 
@@ -1237,19 +1438,19 @@ $("clearBtn").onclick =
             "jarvis_history"
         );
 
+        log(
+            "JARVIS",
+            "Conversation cleared."
+        );
     };
 
 
-// ======================================================
-// SETTINGS BUTTON
-// ======================================================
-
+// SETTINGS
 $("settingsBtn").onclick =
     () => {
 
         window.location.href =
             "settings.html";
-
     };
 
 
@@ -1276,7 +1477,17 @@ document
                         "time"
                     ) {
 
-                        time();
+                        tellTime();
+
+                    }
+
+
+                    if (
+                        command ===
+                        "weather"
+                    ) {
+
+                        await showWeather();
 
                     }
 
@@ -1291,8 +1502,9 @@ document
                                 "Search Google for:"
                             );
 
-                        if (q)
+                        if (q) {
                             google(q);
+                        }
 
                     }
 
@@ -1307,49 +1519,25 @@ document
                                 "Search YouTube for:"
                             );
 
-                        if (q)
+                        if (q) {
                             youtube(q);
-
-                    }
-
-
-                    if (
-                        command ===
-                        "weather"
-                    ) {
-
-                        weather();
-
-                    }
-
-
-                    if (
-                        command ===
-                        "page"
-                    ) {
-
-                        speak(
-                            "Page summarisation isn't available when JARVIS is running as a normal GitHub Pages website."
-                        );
+                        }
 
                     }
 
                 };
-
         }
     );
 
 
 // ======================================================
-// START JARVIS
+// START
 // ======================================================
 
 function startJarvis() {
 
     const apiKey =
-        localStorage.getItem(
-            "jarvis_api_key"
-        );
+        getApiKey();
 
 
     try {
@@ -1363,9 +1551,7 @@ function startJarvis() {
 
     } catch {
 
-        history =
-            [];
-
+        history = [];
     }
 
 
@@ -1375,9 +1561,7 @@ function startJarvis() {
             : "KEY: NOT SET";
 
 
-    if (
-        !history.length
-    ) {
+    if (!history.length) {
 
         log(
             "JARVIS",
@@ -1393,24 +1577,20 @@ function startJarvis() {
 
                     log(
 
-                        item.role ===
-                        "user"
+                        item.role === "user"
                             ? "YOU"
                             : "JARVIS",
 
                         item.text
-
                     );
-
                 }
             );
-
     }
 
 
     initRecognition();
-
 }
 
 
 startJarvis();
+```

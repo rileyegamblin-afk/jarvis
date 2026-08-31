@@ -3,180 +3,226 @@ const rate = document.getElementById("rate");
 const rateVal = document.getElementById("rateVal");
 const speak = document.getElementById("speak");
 const result = document.getElementById("result");
+const save = document.getElementById("save");
+const clear = document.getElementById("clear");
+const test = document.getElementById("test");
 
-rate.oninput = () => {
-  rateVal.textContent = rate.value;
-};
+const MODEL = "gemini-3.6-flash";
+
+
+// ================================
+// VOICE SPEED DISPLAY
+// ================================
+
+rate.addEventListener("input", () => {
+    rateVal.textContent = rate.value;
+});
 
 
 // ================================
 // LOAD SETTINGS
 // ================================
 
-function load() {
-  try {
-    const savedKey = localStorage.getItem("jarvis_api_key");
-    const savedSettings = localStorage.getItem("jarvis_settings");
+async function loadSettings() {
+    try {
+        const data = await chrome.storage.local.get([
+            "apiKey",
+            "settings"
+        ]);
 
-    if (savedKey) {
-      key.value = savedKey;
+        const apiKey = data.apiKey || "";
+        const settings = data.settings || {};
+
+        key.value = apiKey;
+
+        rate.value =
+            settings.voiceRate !== undefined
+                ? settings.voiceRate
+                : 1.05;
+
+        rateVal.textContent = rate.value;
+
+        speak.checked =
+            settings.speak !== false;
+
+        if (apiKey) {
+            result.textContent = "API key loaded.";
+        } else {
+            result.textContent = "No API key saved yet.";
+        }
+
+    } catch (error) {
+        console.error(error);
+        result.textContent =
+            "Could not load settings: " + error.message;
     }
-
-    const settings = savedSettings
-      ? JSON.parse(savedSettings)
-      : {};
-
-    rate.value =
-      settings.voiceRate !== undefined
-        ? settings.voiceRate
-        : 1.05;
-
-    rateVal.textContent = rate.value;
-
-    speak.checked =
-      settings.speak !== false;
-
-  } catch (error) {
-    console.error("JARVIS settings load error:", error);
-    result.textContent =
-      "Error loading settings: " + error.message;
-  }
 }
 
 
 // ================================
-// SAVE
+// SAVE SETTINGS
 // ================================
 
-document.getElementById("save").onclick = () => {
-  try {
-    const apiKey = key.value.trim();
+save.addEventListener("click", async () => {
 
-    const settings = {
-      voiceRate: Number(rate.value),
-      speak: speak.checked,
-      model: "gemini-3.6-flash"
-    };
+    try {
 
-    localStorage.setItem(
-      "jarvis_api_key",
-      apiKey
-    );
+        const apiKey = key.value.trim();
 
-    localStorage.setItem(
-      "jarvis_settings",
-      JSON.stringify(settings)
-    );
+        if (!apiKey) {
+            result.textContent = "Please enter your Gemini API key.";
+            return;
+        }
 
-    result.textContent = "Saved successfully.";
+        const settings = {
+            voiceRate: Number(rate.value),
+            speak: speak.checked,
+            model: MODEL
+        };
 
-  } catch (error) {
-    console.error("JARVIS save error:", error);
-    result.textContent =
-      "Error saving settings: " + error.message;
-  }
-};
+        await chrome.storage.local.set({
+            apiKey: apiKey,
+            settings: settings
+        });
+
+        result.textContent =
+            "✓ API key saved successfully.";
+
+    } catch (error) {
+
+        console.error(error);
+
+        result.textContent =
+            "Save failed: " + error.message;
+    }
+});
 
 
 // ================================
 // REMOVE API KEY
 // ================================
 
-document.getElementById("clear").onclick = () => {
-  try {
-    localStorage.removeItem("jarvis_api_key");
+clear.addEventListener("click", async () => {
 
-    key.value = "";
+    try {
 
-    result.textContent =
-      "API key removed.";
+        await chrome.storage.local.remove([
+            "apiKey"
+        ]);
 
-  } catch (error) {
-    console.error("JARVIS remove error:", error);
-    result.textContent =
-      "Error removing API key: " + error.message;
-  }
-};
+        key.value = "";
+
+        result.textContent =
+            "API key removed.";
+
+    } catch (error) {
+
+        console.error(error);
+
+        result.textContent =
+            "Remove failed: " + error.message;
+    }
+});
 
 
 // ================================
-// TEST AI
+// TEST GEMINI
 // ================================
 
-document.getElementById("test").onclick = async () => {
+test.addEventListener("click", async () => {
 
-  const apiKey = key.value.trim();
+    const apiKey = key.value.trim();
 
-  if (!apiKey) {
-    result.textContent =
-      "Add an API key first.";
-    return;
-  }
-
-  result.textContent = "Testing...";
-
-  try {
-
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
-        },
-
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: "Reply with exactly: JARVIS ONLINE"
-                }
-              ]
-            }
-          ],
-
-          generationConfig: {
-            maxOutputTokens: 20
-          }
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data?.error?.message ||
-        `HTTP ${response.status}`
-      );
+    if (!apiKey) {
+        result.textContent =
+            "Enter your API key first.";
+        return;
     }
 
-    const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Connected";
-
     result.textContent =
-      "Success: " + text;
+        "Testing Gemini...";
 
-  } catch (error) {
+    try {
 
-    console.error(
-      "JARVIS AI test error:",
-      error
-    );
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+            {
+                method: "POST",
 
-    result.textContent =
-      "Error: " + error.message;
-  }
-};
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": apiKey
+                },
+
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [
+                                {
+                                    text: "Reply with exactly: JARVIS ONLINE"
+                                }
+                            ]
+                        }
+                    ],
+
+                    generationConfig: {
+                        maxOutputTokens: 20,
+                        thinkingConfig: {
+                            thinkingLevel: "minimal"
+                        }
+                    }
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data?.error?.message ||
+                `HTTP ${response.status}`
+            );
+        }
+
+        const text =
+            data?.candidates?.[0]?.content?.parts
+                ?.map(part => part.text || "")
+                .join("")
+                .trim();
+
+        if (!text) {
+            throw new Error("Gemini returned no text.");
+        }
+
+        // Save the working key
+        await chrome.storage.local.set({
+            apiKey: apiKey,
+            settings: {
+                voiceRate: Number(rate.value),
+                speak: speak.checked,
+                model: MODEL
+            }
+        });
+
+        result.textContent =
+            "✓ SUCCESS — " + text;
+
+    } catch (error) {
+
+        console.error(
+            "Gemini test error:",
+            error
+        );
+
+        result.textContent =
+            "✕ ERROR — " + error.message;
+    }
+});
 
 
 // ================================
 // START
 // ================================
 
-load();
+loadSettings();

@@ -7,7 +7,7 @@ const save = document.getElementById("save");
 const clear = document.getElementById("clear");
 const test = document.getElementById("test");
 
-const MODEL = "gemini-3.6-flash";
+const MODEL = "gemini-3.7-flash";
 
 if (rate && rateVal) {
     rate.addEventListener("input", () => {

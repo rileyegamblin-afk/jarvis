@@ -136,7 +136,9 @@ $("stopBtn").onclick=stopVoice;
 $("sendBtn").onclick=()=>{const t=$("input").value.trim();if(t){$("input").value="";log("YOU",t);handle(t);}};
 $("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("sendBtn").click();}});
 $("clearBtn").onclick=()=>{$("chat").innerHTML="";history=[];chrome.storage.local.remove("history");};
-$("settingsBtn").onclick=()=>chrome.runtime.openOptionsPage();
+$("settingsBtn").onclick = () => {
+    window.location.href = "settings.html";
+};
 $("quick").onclick=()=>{};
 document.querySelectorAll(".quick button").forEach(b=>b.onclick=async()=>{
   const c=b.dataset.cmd;

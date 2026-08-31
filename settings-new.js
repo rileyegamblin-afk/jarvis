@@ -7,10 +7,23 @@ const save = document.getElementById("save");
 const clear = document.getElementById("clear");
 const test = document.getElementById("test");
 
-const MODEL = "gemini-3.7-flash";
+
+// ======================================================
+// JARVIS MODEL SYSTEM
+// ======================================================
+
+const MODELS = [
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash"
+];
 
 
+// ======================================================
 // VOICE SPEED
+// ======================================================
+
 if (rate) {
     rate.addEventListener("input", () => {
         rateVal.textContent = rate.value;
@@ -18,70 +31,126 @@ if (rate) {
 }
 
 
+// ======================================================
 // LOAD SETTINGS
-function loadSettings() {
-    const apiKey = localStorage.getItem("jarvis_api_key") || "";
+// ======================================================
 
-    let settings = {};
+function loadSettings() {
 
     try {
-        settings = JSON.parse(
-            localStorage.getItem("jarvis_settings") || "{}"
+
+        const apiKey =
+            localStorage.getItem("jarvis_api_key") || "";
+
+        let settings = {};
+
+        try {
+            settings = JSON.parse(
+                localStorage.getItem("jarvis_settings") || "{}"
+            );
+        } catch {
+            settings = {};
+        }
+
+        key.value = apiKey;
+
+        rate.value =
+            settings.voiceRate !== undefined
+                ? settings.voiceRate
+                : 1.05;
+
+        rateVal.textContent = rate.value;
+
+        speak.checked =
+            settings.speak !== false;
+
+        if (apiKey) {
+
+            result.textContent =
+                "✓ API key loaded.";
+
+        } else {
+
+            result.textContent =
+                "No API key saved yet.";
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "JARVIS settings load error:",
+            error
         );
-    } catch {
-        settings = {};
+
+        result.textContent =
+            "Could not load settings: " +
+            error.message;
     }
-
-    key.value = apiKey;
-
-    rate.value =
-        settings.voiceRate !== undefined
-            ? settings.voiceRate
-            : 1.05;
-
-    rateVal.textContent = rate.value;
-
-    speak.checked = settings.speak !== false;
-
-    result.textContent = apiKey
-        ? "✓ API key loaded."
-        : "No API key saved yet.";
 }
 
 
-// SAVE
+// ======================================================
+// SAVE SETTINGS
+// ======================================================
+
 save.addEventListener("click", () => {
 
-    const apiKey = key.value.trim();
+    try {
 
-    if (!apiKey) {
+        const apiKey =
+            key.value.trim();
+
+        if (!apiKey) {
+
+            result.textContent =
+                "Please enter your Gemini API key.";
+
+            return;
+        }
+
+        const settings = {
+
+            voiceRate:
+                Number(rate.value),
+
+            speak:
+                speak.checked,
+
+            model:
+                MODELS[0]
+        };
+
+
+        localStorage.setItem(
+            "jarvis_api_key",
+            apiKey
+        );
+
+        localStorage.setItem(
+            "jarvis_settings",
+            JSON.stringify(settings)
+        );
+
+
         result.textContent =
-            "Please enter your Gemini API key.";
-        return;
+            "✓ API key saved successfully.";
+
+    } catch (error) {
+
+        console.error(error);
+
+        result.textContent =
+            "Save failed: " +
+            error.message;
     }
-
-    const settings = {
-        voiceRate: Number(rate.value),
-        speak: speak.checked,
-        model: MODEL
-    };
-
-    localStorage.setItem(
-        "jarvis_api_key",
-        apiKey
-    );
-
-    localStorage.setItem(
-        "jarvis_settings",
-        JSON.stringify(settings)
-    );
-
-    result.textContent =
-        "✓ API key saved successfully.";
 });
 
 
+// ======================================================
 // REMOVE KEY
+// ======================================================
+
 clear.addEventListener("click", () => {
 
     localStorage.removeItem(
@@ -95,131 +164,375 @@ clear.addEventListener("click", () => {
 });
 
 
-// TEST AI
-test.addEventListener("click", async () => {
+// ======================================================
+// GEMINI REQUEST
+// ======================================================
 
-    const apiKey = key.value.trim();
+async function requestGemini(
+    model,
+    apiKey,
+    prompt
+) {
 
-    if (!apiKey) {
-        result.textContent =
-            "Enter your API key first.";
-        return;
-    }
+    const response = await fetch(
 
-    result.textContent =
-        "Testing Gemini...";
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
 
-    try {
+        {
 
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-            {
-                method: "POST",
+            method: "POST",
 
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": apiKey
-                },
+            headers: {
 
-                body: JSON.stringify({
+                "Content-Type":
+                    "application/json",
 
-                    contents: [
-                        {
-                            role: "user",
+                "x-goog-api-key":
+                    apiKey
+            },
 
-                            parts: [
-                                {
-                                    text: "Reply with exactly: JARVIS ONLINE"
-                                }
-                            ]
-                        }
-                    ],
+            body: JSON.stringify({
 
-                    generationConfig: {
-                        maxOutputTokens: 100
+                contents: [
+
+                    {
+
+                        role: "user",
+
+                        parts: [
+
+                            {
+                                text: prompt
+                            }
+
+                        ]
                     }
-                })
-            }
-        );
+
+                ],
+
+                generationConfig: {
+
+                    maxOutputTokens: 100
+
+                }
+
+            })
+
+        }
+    );
 
 
-        const data = await response.json();
+    const data =
+        await response.json();
 
 
-        console.log(
-            "JARVIS GEMINI RESPONSE:",
-            data
-        );
+    if (!response.ok) {
 
-
-        if (!response.ok) {
-
-            throw new Error(
+        const error =
+            new Error(
                 data?.error?.message ||
                 `HTTP ${response.status}`
             );
-        }
+
+        error.status =
+            response.status;
+
+        throw error;
+    }
 
 
-        const parts =
-            data?.candidates?.[0]?.content?.parts || [];
+    const parts =
+        data?.candidates?.[0]
+            ?.content
+            ?.parts || [];
 
 
-        const text = parts
-            .filter(part =>
-                typeof part.text === "string"
+    const text =
+        parts
+
+            .filter(
+                part =>
+                    typeof part.text ===
+                    "string"
             )
-            .map(part => part.text)
+
+            .map(
+                part =>
+                    part.text
+            )
+
             .join("")
+
             .trim();
 
 
-        if (!text) {
+    if (!text) {
 
-            const reason =
-                data?.candidates?.[0]?.finishReason ||
-                data?.promptFeedback?.blockReason ||
-                "Unknown";
+        const reason =
+            data?.candidates?.[0]
+                ?.finishReason ||
+            data?.promptFeedback
+                ?.blockReason ||
+            "Unknown";
 
-            throw new Error(
+        const error =
+            new Error(
                 `Gemini returned no text. Reason: ${reason}`
             );
+
+        error.status = 503;
+
+        throw error;
+    }
+
+
+    return text;
+}
+
+
+// ======================================================
+// SHOULD WE TRY ANOTHER MODEL?
+// ======================================================
+
+function isTemporaryError(error) {
+
+    const status =
+        Number(error?.status || 0);
+
+    const message =
+        String(
+            error?.message || ""
+        ).toLowerCase();
+
+
+    if (
+        status === 429 ||
+        status === 500 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504
+    ) {
+
+        return true;
+    }
+
+
+    return (
+
+        message.includes(
+            "high demand"
+        ) ||
+
+        message.includes(
+            "temporarily unavailable"
+        ) ||
+
+        message.includes(
+            "overloaded"
+        ) ||
+
+        message.includes(
+            "service unavailable"
+        ) ||
+
+        message.includes(
+            "resource exhausted"
+        )
+    );
+}
+
+
+// ======================================================
+// ASK WITH AUTOMATIC FALLBACK
+// ======================================================
+
+async function askWithFallback(
+    apiKey,
+    prompt,
+    progressCallback
+) {
+
+    let lastError = null;
+
+
+    for (
+        let i = 0;
+        i < MODELS.length;
+        i++
+    ) {
+
+        const model =
+            MODELS[i];
+
+
+        try {
+
+            progressCallback(
+                `Trying ${model}...`
+            );
+
+
+            const answer =
+                await requestGemini(
+                    model,
+                    apiKey,
+                    prompt
+                );
+
+
+            return {
+
+                answer,
+                model
+
+            };
+
+
+        } catch (error) {
+
+            lastError =
+                error;
+
+
+            console.warn(
+                `${model} failed:`,
+                error
+            );
+
+
+            if (
+                !isTemporaryError(
+                    error
+                )
+            ) {
+
+                throw error;
+            }
+
+
+            if (
+                i <
+                MODELS.length - 1
+            ) {
+
+                progressCallback(
+                    `${model} is busy. Switching to ${MODELS[i + 1]}...`
+                );
+
+                await new Promise(
+                    resolve =>
+                        setTimeout(
+                            resolve,
+                            800
+                        )
+                );
+            }
+        }
+    }
+
+
+    throw lastError ||
+        new Error(
+            "All Gemini models failed."
+        );
+}
+
+
+// ======================================================
+// TEST AI
+// ======================================================
+
+test.addEventListener(
+    "click",
+    async () => {
+
+        const apiKey =
+            key.value.trim();
+
+
+        if (!apiKey) {
+
+            result.textContent =
+                "Enter your API key first.";
+
+            return;
         }
 
 
-        // SAVE WORKING KEY
-        localStorage.setItem(
-            "jarvis_api_key",
-            apiKey
-        );
-
-        localStorage.setItem(
-            "jarvis_settings",
-            JSON.stringify({
-                voiceRate: Number(rate.value),
-                speak: speak.checked,
-                model: MODEL
-            })
-        );
+        test.disabled = true;
 
 
-        result.textContent =
-            "✓ SUCCESS — " + text;
+        try {
+
+            const response =
+                await askWithFallback(
+
+                    apiKey,
+
+                    "Reply with exactly: JARVIS ONLINE",
+
+                    message => {
+
+                        result.textContent =
+                            message;
+                    }
+                );
 
 
-    } catch (error) {
+            // Save the working key
+            localStorage.setItem(
+                "jarvis_api_key",
+                apiKey
+            );
 
-        console.error(
-            "JARVIS AI TEST ERROR:",
-            error
-        );
 
-        result.textContent =
-            "✕ ERROR — " +
-            error.message;
+            localStorage.setItem(
+
+                "jarvis_settings",
+
+                JSON.stringify({
+
+                    voiceRate:
+                        Number(rate.value),
+
+                    speak:
+                        speak.checked,
+
+                    model:
+                        response.model
+                })
+            );
+
+
+            result.textContent =
+                `✓ SUCCESS — ${response.answer} (${response.model})`;
+
+
+        } catch (error) {
+
+            console.error(
+                "JARVIS AI TEST ERROR:",
+                error
+            );
+
+
+            result.textContent =
+                "✕ ERROR — " +
+                error.message;
+
+
+        } finally {
+
+            test.disabled = false;
+
+        }
+
     }
-});
+);
 
 
+// ======================================================
 // START
+// ======================================================
+
 loadSettings();

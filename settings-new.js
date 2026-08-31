@@ -188,12 +188,14 @@ if (test) {
             }
 
 
-            const text =
-                data?.candidates?.[0]
-                    ?.content?.parts
-                    ?.map(part => part.text || "")
-                    .join("")
-                    .trim();
+            const parts =
+    data?.candidates?.[0]?.content?.parts || [];
+
+const text = parts
+    .filter(part => part.text)
+    .map(part => part.text)
+    .join("")
+    .trim();
 
 
             if (!text) {
